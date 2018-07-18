@@ -46,6 +46,7 @@ def tabu_search(inf_path):
     time_table.append(load)
     time_table.append((st))
 
+
     """
     tabuSzie
     L_status : record and enforce the tabu status
