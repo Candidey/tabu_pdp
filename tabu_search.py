@@ -54,10 +54,13 @@ def tabu_search(inf_path):
     """
 
     tabu_length = max(30, depots / 2)
-    nodes = [x+1 for x in range(depots)]
-    pos_iter = [(0,0) for _ in range(depots)]
-    L_status = dict(map(lambda x,y:[x,y],nodes,pos_iter))
-    print(L_status)
+    nodes = []
+    depots = 10
+    for x in range(1, depots + 1):
+        for y in range(1, depots):
+            nodes.append((x, y))
+    pos_iter = [0 for _ in range(depots ** 2)]
+    L_status = dict(map(lambda x, y: [x, y], nodes, pos_iter))
 
     """
     A: arrive time, D + t
