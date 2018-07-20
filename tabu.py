@@ -12,6 +12,8 @@ def tabu(file_path,veh,C):
     global best_solution_cost
     global attribute
 
+    global penalty # it's a dict, like penalty = {(1,0):1,(1,2):1,...,(10,2):3}. Record the number of times attribute ði; kÞ has been added to the solution during the search.
+
 
     coordinate = []
     load = []
@@ -65,6 +67,9 @@ def tabu(file_path,veh,C):
                     current_solution_cost = cost(current_solution,inf,C)
                     if current_solution_cost < best_solution_cost:
                         best_solution = copy.deepcopy(current_solution)
+        if iteration/10 == 0:
+            # intra-route
+            best_solution = wri(best_solution)
         iteration += 1
     return best_solution
 
