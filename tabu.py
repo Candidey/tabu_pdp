@@ -1,5 +1,7 @@
 import copy
 import random
+import math
+import time
 
 def tabu(file_path,veh,C):
     global coordinate
@@ -37,14 +39,14 @@ def tabu(file_path,veh,C):
         lt.append(inf_line[5])
         st.append(inf_line[6])
 
-    inf.append(et)
-    inf.append(lt)
-    inf.append(load)
-    inf.append(st)
+    inf = generate_inf(et,lt,load,st,coordinate,inf)
+
+
 
     current_solution = get_initial_solution(depots, veh)
     best_solution = copy.deepcopy(current_solution)
     best_solution_cost = cost(best_solution,inf,C)
+    print(current_solution)
     # atwl = sum([lt[i] - et[i] for i in range(1, depots + 1)]) / depots
     iteration = 0
     while(iteration < 1):
@@ -67,12 +69,22 @@ def tabu(file_path,veh,C):
                     current_solution_cost = cost(current_solution,inf,C)
                     if current_solution_cost < best_solution_cost:
                         best_solution = copy.deepcopy(current_solution)
-        if iteration/10 == 0:
-            # intra-route
-            best_solution = wri(best_solution)
+                        best_solution_cost = current_solution_cost
+        # print(best_solution)
+        # if iteration/10 == 0:
+        #     # intra-route
+        #     best_solution = wri(best_solution)
         iteration += 1
     return best_solution
 
+
+def generate_inf(et,lt,load,st,coordinate,inf):
+    inf.append(et)
+    inf.append(lt)
+    inf.append(load)
+    inf.append(st)
+    inf.append(coordinate)
+    return inf
 
 def get_initial_solution(depots, veh):
     solution = [[],[],[]]
@@ -173,7 +185,15 @@ def cost(solution, inf, C):
         l = load[i] - C
         s_ld = s_ld + max(0, l)
 
-    Z = 1*s_tw + 100*s_ld
+    # cost of the arc should be added
+    dis = inf[4]
+    distance = 0
+    for s in solution:
+        for i in range(len(s)-1):
+            length = math.sqrt((dis[s[i]][0] - dis[s[i+1]][0]) ** 2 + (dis[s[i]][1] - dis[s[i+1]][1]) ** 2)
+            distance += length
+
+    Z = 1*s_tw + 1*s_ld + distance
     return Z
 
 def attribute(solution):
@@ -183,7 +203,7 @@ def spi(solution, index_routes, req, depots,inf,C):
 
     c_solution = copy.deepcopy(solution)
     c_cost = cost(c_solution,inf,C)
-    b_solution = solution
+    b_solution = copy.deepcopy(solution)
     b_cost = c_cost
 
     solution[index_routes].remove(req)
@@ -195,39 +215,78 @@ def spi(solution, index_routes, req, depots,inf,C):
             # compare the cost to best_cost
             for pre_pos in range(1, len(solution[i])):
                 solution[i].insert(pre_pos, req)
-                if True:
+                flag = feasiable(solution[i],pre_pos,inf, depots,C)
+                if flag:
                     for suc_pos in range(pre_pos+1,len(solution[i])):
                         solution[i].insert(suc_pos, int((depots-2)/2+req))
                         c_solution = copy.deepcopy(solution)
                         c_cost = cost(c_solution, inf, C)
                         if c_cost < b_cost:
                             b_solution = copy.deepcopy(c_solution)
+                            b_cost = c_cost
                         solution[i].remove(int((depots-2)/2+req))
                 solution[i].remove(req)
-            solution = copy.deepcopy(init_solution)
-
-
+        solution = copy.deepcopy(init_solution)
     #get the best solution
     return b_solution
 
+def feasiable(route,pre_pos,inf, depots,C):
+    flag = True
+    req = int((depots-2)/2)
+    L = [0 for _ in range(depots)]
+    A = [0 for _ in range(depots)]
+    D = [0 for _ in range(depots)]
+    site = 0
+    for i in route:
+        if site != 0 and site != len(route):
+            A[site] = D[site-1] + inf[3][i]
+            D[site] = max(A[site], inf[0][i])
+            L[site] = L[site-1] + inf[2][i]
+
+            if D[site] > inf[1][i] or L[site] > C:
+                flag = False
+                break
+        if site == pre_pos:
+            break
+        site += 1
+    return flag
 
 def wri():
     return 0
 
 if __name__ == "__main__":
+    start = time.time()
     inf_path = '/home/yin/Desktop/pdp_test.txt'
     print(tabu(inf_path,3,10))
+    stop = time.time()
+    print(stop-start)
+
+
 
     # print(get_ADWL([[0,1,2,3,11,12,13,21]],[[0, 448, 621, 534, 15, 255, 179, 475, 278, 30, 10, 912, 825, 727, 170, 357, 652, 567, 384, 99, 65, 0], [1236, 505, 702, 605, 67, 324, 254, 528, 345, 92, 73, 967, 870, 782, 225, 410, 721, 620, 429, 148, 144, 1236], [0, 10, 20, 10, 10, 20, 20, 40, 10, 30, 10, -10, -20, -10, -10, -20, -20, -40, -10, -30, -10, 0], [0, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 0]]))
 
     # print(get_initial_solution(22, 3))
 
-    solution = [[0, 3, 13, 6, 16, 9, 19, 21], [0, 1, 11, 4, 14, 8, 18, 10, 20, 21], [0, 2, 12, 5, 15, 7, 17, 21]]
-    # index_routes = 0
-    # req = 3
     # depots = 22
-    # solution = spi(solution, index_routes, req, depots)
+    # C = 20
+    # solution = [[0, 4, 14, 21], [0, 1, 11, 3, 13, 5, 15, 6, 16, 7, 17, 8, 18, 10, 20, 21], [0, 2, 12, 9, 19, 21]]
+    # print(solution)
+    # req = 4
+    #
+    # index_routes = 0
+    #
+    #
+    # inf = [[0, 448, 621, 534, 15, 255, 179, 475, 278, 30, 10, 912, 825, 727, 170, 357, 652, 567, 384, 99, 65, 0],
+    #        [1236, 505, 702, 605, 67, 324, 254, 528, 345, 92, 73, 967, 870, 782, 225, 410, 721, 620, 429, 148, 144,
+    #         1236], [0, 10, 20, 10, 10, 20, 20, 40, 10, 30, 10, -10, -20, -10, -10, -20, -20, -40, -10, -30, -10, 0],
+    #        [0, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 0]]
+    # inf = [[0, 448, 621, 534, 15, 255, 179, 475, 278, 30, 10, 912, 825, 727, 170, 357, 652, 567, 384, 99, 65, 0], [1236, 505, 702, 605, 67, 324, 254, 528, 345, 92, 73, 967, 870, 782, 225, 410, 721, 620, 429, 148, 144, 1236], [0, 10, 20, 10, 10, 20, 20, 40, 10, 30, 10, -10, -20, -10, -10, -20, -20, -40, -10, -30, -10, 0], [0, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 0], [(40, 50), (35, 69), (40, 69), (38, 70), (42, 65), (38, 68), (15, 75), (20, 85), (15, 80), (22, 75), (30, 50), (45, 68), (45, 70), (42, 68), (40, 66), (35, 66), (25, 85), (22, 85), (20, 80), (18, 75), (25, 50), (40, 50)]]
+    # print(cost(solution,inf,C))
+    # cost(solution, inf, C)
+    # solution = spi(solution, index_routes, req, depots,inf, 10)
     # print(solution)
 
     # inf = [[0, 448, 621, 534, 15, 255, 179, 475, 278, 30, 10, 912, 825, 727, 170, 357, 652, 567, 384, 99, 65, 0], [1236, 505, 702, 605, 67, 324, 254, 528, 345, 92, 73, 967, 870, 782, 225, 410, 721, 620, 429, 148, 144, 1236], [0, 10, 20, 10, 10, 20, 20, 40, 10, 30, 10, -10, -20, -10, -10, -20, -20, -40, -10, -30, -10, 0], [0, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 0]]
     # print(cost(solution,inf,10))
+
+    # print(feasiable([0, 1, 11, 3, 13, 5, 15, 6, 16, 7, 17, 8, 18, 10, 20, 21],2, inf, depots, C))
