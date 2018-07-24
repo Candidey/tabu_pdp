@@ -14,7 +14,6 @@ def tabu(file_path,veh,C):
     global best_solution_cost
     global attribute
 
-    global penalty # it's a dict, like penalty = {(1,0):1,(1,2):1,...,(10,2):3}. Record the number of times attribute ði; kÞ has been added to the solution during the search.
 
 
     coordinate = []
@@ -43,20 +42,24 @@ def tabu(file_path,veh,C):
 
 
 
-    current_solution = get_initial_solution(depots, veh)
-    best_solution = copy.deepcopy(current_solution)
-    best_solution_cost = cost(best_solution,inf,C)
+    initial_solution = get_initial_solution(depots, veh)
+    current_solution = copy.deepcopy(initial_solution)
+    best_solution = copy.deepcopy(initial_solution)
+    best_solution_cost = cost(initial_solution,inf,C)
     print(current_solution)
     # atwl = sum([lt[i] - et[i] for i in range(1, depots + 1)]) / depots
     iteration = 0
     while(iteration < 1):
         # attribute = attribute(best_solution)
-        for index_routes in range(len(best_solution)):
-            for req in best_solution[index_routes]:
+        for index_routes in range(len(current_solution)):
+            for req in initial_solution[index_routes]:
                 if req != 0 and req != depots and (req, index_routes) not in tabu and req <= (depots-2)/2:
+                    if len(tabu) > 10:
+                        del tabu[0]
                     tabu.append((req, index_routes))
                     # 还没有设置tabu的size
-                    current_solution = spi(best_solution, index_routes, req, depots,inf,C)
+                    current_solution = spi(current_solution, index_routes, req, depots,inf,C)
+                    # print('spi',current_solution)
                     # if atwl > 0.25:
                     #     current_solution = wri()
                     # else:
@@ -70,6 +73,9 @@ def tabu(file_path,veh,C):
                     if current_solution_cost < best_solution_cost:
                         best_solution = copy.deepcopy(current_solution)
                         best_solution_cost = current_solution_cost
+
+                    # print('req', req, 'best', best_solution)
+
         # print(best_solution)
         # if iteration/10 == 0:
         #     # intra-route
@@ -227,6 +233,7 @@ def spi(solution, index_routes, req, depots,inf,C):
                         solution[i].remove(int((depots-2)/2+req))
                 solution[i].remove(req)
         solution = copy.deepcopy(init_solution)
+        # print(b_solution)
     #get the best solution
     return b_solution
 
@@ -290,3 +297,17 @@ if __name__ == "__main__":
     # print(cost(solution,inf,10))
 
     # print(feasiable([0, 1, 11, 3, 13, 5, 15, 6, 16, 7, 17, 8, 18, 10, 20, 21],2, inf, depots, C))
+
+    # solution = [[0, 2, 12, 4, 14, 6, 16, 10, 20, 21], [0, 1, 11, 3, 13, 5, 15, 21], [0, 7, 17, 8, 18, 9, 19, 21]]
+    # ini_solution = copy.deepcopy(solution)
+    # c_solution = copy.deepcopy(solution)
+    # for index_routes in range(len(solution)):
+    #     for req in solution[index_routes]:
+    #         if req != 0 and req != 21 and req <= (22 - 2) / 2:
+    #             print(req)
+    #             c_solution = spi(c_solution,index_routes,req,22,inf,C)
+    #             print(c_solution)
+        # solution = copy.deepcopy(ini_solution)
+
+
+
