@@ -2,6 +2,7 @@ import random
 import math
 import copy
 import time
+import operator
 
 def generate_inf(et,lt,load,st,coordinate,inf):
     inf.append(et)
@@ -108,7 +109,7 @@ def cost(x, y, solution, inf, pkn, C):
         for i in range(len(s)-1):
             c_dist += math.sqrt((coor[s[i]][0] - coor[s[i+1]][0]) ** 2 + (coor[s[i]][1] - coor[s[i+1]][1]) ** 2)
 
-    cost = c_dist + x*c_tw + y*c_ld
+    cost = c_dist  + x*c_tw + y*c_ld
 
     return cost
 
@@ -133,7 +134,8 @@ def feasiable(route, pre_pos, inf, depots,C):
         site += 1
     return flag
 
-def spi(x, y, solution, index_routes, req, pkn, inf, C):
+def spi(x, y, f_solution, index_routes, req, pkn, inf, C):
+    solution = copy.deepcopy(f_solution)
     init_solution = copy.deepcopy(solution)
     c_solution = copy.deepcopy(solution)
     c_cost = cost(x, y, c_solution, inf, pkn, C)
@@ -153,6 +155,7 @@ def spi(x, y, solution, index_routes, req, pkn, inf, C):
                         solution[i].insert(suc_pos, req+pkn)
                         c_solution = copy.deepcopy(solution)
                         c_cost = cost(x, y, c_solution, inf, pkn, C)
+
                         if c_cost < b_cost:
                             b_solution = copy.deepcopy(c_solution)
                             b_cost = c_cost
@@ -169,8 +172,8 @@ def tabu(file_path, veh, C):
     global y
     global z
     global tabu
-    x = 1
-    y = 1
+    x = 0.00001
+    y = 0.00001
     z = 0.5
 
     et = []
@@ -205,38 +208,39 @@ def tabu(file_path, veh, C):
     print(initial_solution)
 
     iteration = 0
-    while(iteration < 3):
+    while(iteration < 1):
         for index_routes in range(len(current_solution)):
             for req in initial_solution[index_routes]:
                 if req != 0 and req != depots and (req, index_routes) not in tabu and req <= pkn:
-                    if len(tabu) > 10:
+                    if len(tabu) > 5:
                         del tabu[0]
-                    tabu.append((req, index_routes))
-                    current_solution = spi(x, y, current_solution, index_routes, req, pkn, inf, C)
-                    current_solution_cost = cost(x, y, current_solution, inf, pkn, C)
-                    # print('current solution', current_solution)
-                    # print('curretn cost', current_solution_cost)
-                    adwl = get_ADWL(current_solution, inf, pkn, C)
-                    tw_flag, ld_flag = tw_ld_flag(adwl)
-                    if tw_flag:
-                        x = x / (1+z)
-                    else:
-                        x = x * (1+z)
-                    if ld_flag:
-                        y = y / (1+z)
-                    else:
-                        y = y * (1+z)
-
-                    if current_solution_cost < best_solution_cost:
-                        best_solution = copy.deepcopy(current_solution)
-                        best_solution_cost = current_solution_cost
+                    instant_s = spi(x, y, current_solution, index_routes, req, pkn, inf, C)
+                    if not operator.eq(instant_s,current_solution):
+                        tabu.append((req, index_routes))
+                        current_solution = copy.deepcopy(instant_s)
+                        current_solution_cost = cost(x, y, current_solution, inf, pkn, C)
+                        # print('current solution', current_solution)
+                        # print('curretn cost', current_solution_cost)
+                        adwl = get_ADWL(current_solution, inf, pkn, C)
+                        tw_flag, ld_flag = tw_ld_flag(adwl)
+                        if tw_flag:
+                            x = x / (1+z)
+                        else:
+                            x = x * (1+z)
+                        if ld_flag:
+                            y = y / (1+z)
+                        else:
+                            y = y * (1+z)
+                        if current_solution_cost < best_solution_cost:
+                            best_solution = copy.deepcopy(current_solution)
+                            best_solution_cost = current_solution_cost
 
         print('best solution', best_solution)
         print('cost', best_solution_cost)
         initial_solution = copy.deepcopy(best_solution)
         current_solution = copy.deepcopy(best_solution)
         iteration += 1
-
+        print(tw_ld_flag(get_ADWL(best_solution,inf,pkn,C)))
     return best_solution
 
 
@@ -244,7 +248,7 @@ def tabu(file_path, veh, C):
 if __name__ == "__main__":
     start = time.time()
     inf_path = '/home/yin/Desktop/pdp_test.txt'
-    print(tabu(inf_path,3,10))
+    s = tabu(inf_path,3,10)
     stop = time.time()
     print(stop-start)
 
@@ -264,6 +268,7 @@ if __name__ == "__main__":
     # print(cost(1,1,solution,inf,pkn,C))
 
 
+
     # test spi
     # inf = [[0, 448, 621, 534, 15, 255, 179, 475, 278, 30, 10, 912, 825, 727, 170, 357, 652, 567, 384, 99, 65, 0],
     #        [1236, 505, 702, 605, 67, 324, 254, 528, 345, 92, 73, 967, 870, 782, 225, 410, 721, 620, 429, 148, 144,
@@ -273,7 +278,8 @@ if __name__ == "__main__":
     #         (30, 50), (45, 68), (45, 70), (42, 68), (40, 66), (35, 66), (25, 85), (22, 85), (20, 80), (18, 75),
     #         (25, 50), (40, 50)]]
     # C = 20
-    # solution = [[0, 2, 12, 4, 14, 6, 16, 10, 20, 21], [0, 1, 11, 3, 13, 5, 15, 21], [0, 7, 17, 8, 18, 9, 19, 21]]
+    # solution = [[0, 2, 12, 4, 14, 5, 15, 21], [0, 1, 11, 7, 17, 9, 19, 21], [0, 3, 13, 6, 16, 8, 18, 10, 20, 21]]
+    # [[0, 3, 1, 2, 13, 12, 11, 4, 14, 5, 15, 21], [0, 7, 17, 9, 19, 21], [0, 6, 16, 8, 18, 10, 20, 21]]
     # ini_solution = copy.deepcopy(solution)
     # c_solution = copy.deepcopy(solution)
     # for index_routes in range(len(solution)):
