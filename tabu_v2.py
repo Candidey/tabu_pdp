@@ -64,7 +64,7 @@ def get_ADWL(solution, inf, pkn, C):
             else:
                 load[i] = load[route[count_route - 1]] + inf[2][i]
                 A[i] = inf[3][route[count_route - 1]] + D[route[count_route - 1]]
-                D[i] = max(A[route[count_route ]], inf[0][i])
+                D[i] = max(A[route[count_route]], inf[0][i])
                 W[i] = D[i] - A[i]
 
             count_route += 1
@@ -96,17 +96,22 @@ def cost(x, y, solution, inf, pkn, C):
     c_dist = 0
     c_ld = 0
     c_tw = 0
+    f1 = True
+    f2 = True
 
 
     adwl = get_ADWL(solution, inf, pkn, C)
     A = adwl[0]
     load = adwl[1]
-
     # violation of time window and load
     for i in range(1,pkn*2+1):
         t = A[i] - inf[1][i]
+        if t > 0:
+            f1 = False
         c_tw = c_tw + max(0,t)
         l = load[i] - C
+        if l > 0:
+            f2 = False
         c_ld = c_ld + max(0,l)
 
     # distance of arc
@@ -118,7 +123,7 @@ def cost(x, y, solution, inf, pkn, C):
     # cost = c_dist + x*c_tw + y*c_ld
     cost = x * c_tw + y * c_ld
 
-    return cost
+    return f1, f2, cost
 
 # an admissble placement is one where the predecessor node satisfies both time window and capacity constraints
 def feasiable(route, pre_pos, inf, depots,C):
@@ -170,17 +175,17 @@ def spi(x, y, f_solution, index_routes, req, pkn, inf, C):
                     for suc_pos in range(pre_pos+1, len(solution[i])):
                         solution[i].insert(suc_pos, req+pkn)
                         c_solution = copy.deepcopy(solution)
-                        # adwl = get_ADWL(c_solution, inf, pkn, C)
-                        # tw_flag, ld_flag = tw_ld_flag(adwl)
-                        # # adjust the parameter
-                        # if tw_flag:
-                        #     x = x / (1 + z)
-                        # else:
-                        #     x = x * (1 + z)
-                        # if ld_flag:
-                        #     y = y / (1 + z)
-                        # else:
-                        #     y = y * (1 + z)
+                        adwl = get_ADWL(c_solution, inf, pkn, C)
+                        tw_flag, ld_flag = tw_ld_flag(adwl)
+                        # adjust the parameter
+                        if tw_flag:
+                            x = x / (1 + z)
+                        else:
+                            x = x * (1 + z)
+                        if ld_flag:
+                            y = y / (1 + z)
+                        else:
+                            y = y * (1 + z)
                         c_cost = cost(x, y, c_solution, inf, pkn, C)
                         if c_cost < b_cost:
                             b_solution = copy.deepcopy(c_solution)
@@ -227,6 +232,29 @@ def sbr(f_solution, pkn):
 
     return solution
 
+def moves(solution,pkn):
+    nd = []
+    for i in range(len(solution)):
+        for n in solution[i]:
+            if n != 0 and n != (2*pkn +2) and n <= pkn:
+                c_solution = copy.deepcopy(solution)
+                c_solution[i].remove(n)
+                c_solution[i].remove(n + pkn)
+                for insert_route in range(len(solution)):
+                    if insert_route != i:
+                        for pre_pos in range(1, len(solution[insert_route])):
+                            c_solution[insert_route].insert(pre_pos, n)
+                            # insert successor node
+                            for suc_pos in range(pre_pos + 1, len(solution[insert_route])+1):
+                                c_solution[insert_route].insert(suc_pos, n + pkn)
+                                s_nd = copy.deepcopy(c_solution)
+                                nd.append(s_nd)
+                                c_solution[insert_route].remove(n+pkn)
+                            c_solution[insert_route].remove(n)
+    return nd
+
+def inRoute(solution, pkn):
+    pass
 
 
 def tabu(file_path, veh, C):
@@ -236,9 +264,12 @@ def tabu(file_path, veh, C):
     global y
     global z
     global tabu
+    global f1
+    global f2
+
     x = 1
     y = 1
-
+    z = 0.5
 
     et = []
     lt = []
@@ -268,54 +299,76 @@ def tabu(file_path, veh, C):
     initial_solution = get_initial_solution(pkn, veh)
     current_solution = copy.deepcopy(initial_solution)
     best_solution = copy.deepcopy(initial_solution)
-    best_solution_cost = cost(x, y, best_solution, inf, pkn, C)
+    f1, f2, best_solution_cost = cost(x, y, best_solution, inf, pkn, C)
 
     print(initial_solution)
 
     iteration = 0
-    while(iteration < 1000):
-        # spi performs the following process for all predecessor nodes
-        for index_routes in range(len(current_solution)):
-            for req in initial_solution[index_routes]:
-                # the node cant be start node or destination node. and should be in tabu
-                if req != 0 and req != depots and (req, index_routes) not in tabu and req <= pkn:
-                    # tabu size
-                    if len(tabu) > 5:
-                        del tabu[0]
-                    x, y, instant_s = spi(x, y, current_solution, index_routes, req, pkn, inf, C)
-                    # after spi, if there is a new solution:
-                    if not operator.eq(instant_s,current_solution):
-                        tabu.append((req, index_routes))
-                        current_solution = copy.deepcopy(instant_s)
-                        current_solution_cost = cost(x, y, current_solution, inf, pkn, C)
-                        # print('current solution', current_solution)
-                        # print('curretn cost', current_solution_cost)
-                        if current_solution_cost < best_solution_cost:
-                            best_solution = copy.deepcopy(current_solution)
-                            best_solution_cost = current_solution_cost
+    while(iteration < 100):
+        n_cs = moves(best_solution,pkn)
+        for s in n_cs:
+            s_f1, s_f2, s_cost = cost(x,y,s,inf,pkn,C)
+            # print(s)
+            # print(s_cost)
+            mark = compare(best_solution, s)
+            if s_cost < best_solution_cost:
+                if mark not in tabu:
+                    tabu.append(mark)
+                    print('tabu', tabu)
+                    best_solution = copy.deepcopy(s)
+                    best_solution_cost = s_cost
+            #         f1 = s_f1
+            #         f2 = s_f2
+            # if f1:
+            #     x = x/1.5
+            # else:
+            #     x = x*1.5
+            # if f2:
+            #     y = y/1.5
+            # else:
+            #     y = y*1.5
 
-
-
-        print('best solution', best_solution)
-        print('cost', best_solution_cost)
-        initial_solution = get_initial_solution(pkn, veh)
-        current_solution = copy.deepcopy(initial_solution)
-        # current_solution = sbr(current_solution, pkn)
-        # initial_solution = copy.deepcopy(current_solution)
-        print('initial_solution', initial_solution)
         iteration += 1
-        # print(get_ADWL(best_solution,inf,pkn,C))
-        print(tw_ld_flag(get_ADWL(best_solution,inf,pkn,C)))
+    print('best cost', best_solution_cost)
     return best_solution
 
 
-
+def compare(a, b):
+    k = 0
+    n = 0
+    f1 = False
+    f2 = True
+    for i in range(len(a)):
+        if len(b[i]) < len(a[i]):
+            k = i
+            f1 = True
+        elif len(b[i]) > len(a[i]):
+            mark = list(set(b[i]).difference(set(a[i])))
+            if mark[0] > mark[1]:
+                n = mark[1]
+            else:
+                n = mark[0]
+            f2 = True
+        if f1 and f2:
+            break
+    return n,k
 if __name__ == "__main__":
     start = time.time()
     inf_path = '/home/yin/Desktop/pdp_test.txt'
     s = tabu(inf_path,3,10)
+    print(s)
     stop = time.time()
     print(stop-start)
+
+    # test compare
+    # print(compare([[0, 2, 7, 11], [0, 1,4,9, 6,11]],[[0,2,7,4,9,11],[0,1,6,11]]))
+
+
+
+    # test moves()
+    # solution = [[0,1,2,6,7,11],[0,4,9,11]]
+    # print(moves(solution,5))
+
 
     # test sbr
     # solution = get_initial_solution(10,3)
@@ -332,6 +385,7 @@ if __name__ == "__main__":
 
     # test cost
     # inf = [[0, 448, 621, 534, 15, 255, 179, 475, 278, 30, 10, 912, 825, 727, 170, 357, 652, 567, 384, 99, 65, 0], [1236, 505, 702, 605, 67, 324, 254, 528, 345, 92, 73, 967, 870, 782, 225, 410, 721, 620, 429, 148, 144, 1236], [0, 10, 20, 10, 10, 20, 20, 40, 10, 30, 10, -10, -20, -10, -10, -20, -20, -40, -10, -30, -10, 0], [0, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 0], [(40, 50), (35, 69), (40, 69), (38, 70), (42, 65), (38, 68), (15, 75), (20, 85), (15, 80), (22, 75), (30, 50), (45, 68), (45, 70), (42, 68), (40, 66), (35, 66), (25, 85), (22, 85), (20, 80), (18, 75), (25, 50), (40, 50)]]
+    # # solution = [[0, 21], [0, 2, 9, 12, 19, 3, 13, 4, 14, 6, 16, 7, 17, 8, 18, 10, 20, 21], [0, 1, 11, 5, 15, 21]]
     # solution = [[0, 1, 2, 12, 3, 11, 13, 21], [0, 4, 14, 5, 15, 6, 16, 7, 17, 10, 20, 21], [0, 8, 18, 9, 19, 21]]
     # pkn = 10
     # C = 20
