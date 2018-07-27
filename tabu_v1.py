@@ -64,7 +64,7 @@ def get_ADWL(solution, inf, pkn, C):
             else:
                 load[i] = load[route[count_route - 1]] + inf[2][i]
                 A[i] = inf[3][route[count_route - 1]] + D[route[count_route - 1]]
-                D[i] = max(A[route[count_route ]], inf[0][i])
+                D[i] = max(A[route[count_route]], inf[0][i])
                 W[i] = D[i] - A[i]
 
             count_route += 1
@@ -110,13 +110,13 @@ def cost(x, y, solution, inf, pkn, C):
         c_ld = c_ld + max(0,l)
 
     # distance of arc
-    # coor = inf[4]
-    # for s in solution:
-    #     for i in range(len(s)-1):
-    #         c_dist += math.sqrt((coor[s[i]][0] - coor[s[i+1]][0]) ** 2 + (coor[s[i]][1] - coor[s[i+1]][1]) ** 2)
+    coor = inf[4]
+    for s in solution:
+        for i in range(len(s)-1):
+            c_dist += math.sqrt((coor[s[i]][0] - coor[s[i+1]][0]) ** 2 + (coor[s[i]][1] - coor[s[i+1]][1]) ** 2)
 
-    # cost = c_dist + x*c_tw + y*c_ld
-    cost = x * c_tw + y * c_ld
+    cost = c_dist + x*c_tw + y*c_ld
+    # cost = x * c_tw + y * c_ld
 
     return cost
 
@@ -273,7 +273,7 @@ def tabu(file_path, veh, C):
     print(initial_solution)
 
     iteration = 0
-    while(iteration < 1000):
+    while(iteration < 10000):
         # spi performs the following process for all predecessor nodes
         for index_routes in range(len(current_solution)):
             for req in initial_solution[index_routes]:
@@ -300,12 +300,12 @@ def tabu(file_path, veh, C):
         print('cost', best_solution_cost)
         initial_solution = get_initial_solution(pkn, veh)
         current_solution = copy.deepcopy(initial_solution)
-        # current_solution = sbr(current_solution, pkn)
-        # initial_solution = copy.deepcopy(current_solution)
-        print('initial_solution', initial_solution)
+        # # current_solution = sbr(current_solution, pkn)
+        # # initial_solution = copy.deepcopy(current_solution)
+        # print('initial_solution', initial_solution)
         iteration += 1
         # print(get_ADWL(best_solution,inf,pkn,C))
-        print(tw_ld_flag(get_ADWL(best_solution,inf,pkn,C)))
+        # print(tw_ld_flag(get_ADWL(best_solution,inf,pkn,C)))
     return best_solution
 
 
@@ -332,7 +332,7 @@ if __name__ == "__main__":
 
     # test cost
     # inf = [[0, 448, 621, 534, 15, 255, 179, 475, 278, 30, 10, 912, 825, 727, 170, 357, 652, 567, 384, 99, 65, 0], [1236, 505, 702, 605, 67, 324, 254, 528, 345, 92, 73, 967, 870, 782, 225, 410, 721, 620, 429, 148, 144, 1236], [0, 10, 20, 10, 10, 20, 20, 40, 10, 30, 10, -10, -20, -10, -10, -20, -20, -40, -10, -30, -10, 0], [0, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 0], [(40, 50), (35, 69), (40, 69), (38, 70), (42, 65), (38, 68), (15, 75), (20, 85), (15, 80), (22, 75), (30, 50), (45, 68), (45, 70), (42, 68), (40, 66), (35, 66), (25, 85), (22, 85), (20, 80), (18, 75), (25, 50), (40, 50)]]
-    # solution = [[0, 1, 2, 12, 3, 11, 13, 21], [0, 4, 14, 5, 15, 6, 16, 7, 17, 10, 20, 21], [0, 8, 18, 9, 19, 21]]
+    # solution = [[0, 4, 14, 8, 18, 3, 13, 21], [0, 10, 20, 6, 5, 15, 7, 17, 16, 21], [0, 9, 19, 1, 2, 12, 11, 21]]
     # pkn = 10
     # C = 20
     # print(cost(1,1,solution,inf,pkn,C))

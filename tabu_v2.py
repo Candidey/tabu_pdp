@@ -115,13 +115,13 @@ def cost(x, y, solution, inf, pkn, C):
         c_ld = c_ld + max(0,l)
 
     # distance of arc
-    # coor = inf[4]
-    # for s in solution:
-    #     for i in range(len(s)-1):
-    #         c_dist += math.sqrt((coor[s[i]][0] - coor[s[i+1]][0]) ** 2 + (coor[s[i]][1] - coor[s[i+1]][1]) ** 2)
+    coor = inf[4]
+    for s in solution:
+        for i in range(len(s)-1):
+            c_dist += math.sqrt((coor[s[i]][0] - coor[s[i+1]][0]) ** 2 + (coor[s[i]][1] - coor[s[i+1]][1]) ** 2)
 
-    # cost = c_dist + x*c_tw + y*c_ld
-    cost = x * c_tw + y * c_ld
+    cost = c_dist + x*c_tw + y*c_ld
+    # cost = x * c_tw + y * c_ld
 
     return f1, f2, cost
 
@@ -306,28 +306,33 @@ def tabu(file_path, veh, C):
     iteration = 0
     while(iteration < 100):
         n_cs = moves(best_solution,pkn)
+        # print(len(n_cs))
         for s in n_cs:
+            mark = compare(best_solution, s)
             s_f1, s_f2, s_cost = cost(x,y,s,inf,pkn,C)
             # print(s)
             # print(s_cost)
-            mark = compare(best_solution, s)
             if s_cost < best_solution_cost:
-                if mark not in tabu:
+                if mark != (0,0) and mark not in tabu:
+                    if len(tabu) > 10:
+                        del tabu[0]
                     tabu.append(mark)
                     print('tabu', tabu)
                     best_solution = copy.deepcopy(s)
                     best_solution_cost = s_cost
-            #         f1 = s_f1
-            #         f2 = s_f2
-            # if f1:
-            #     x = x/1.5
-            # else:
-            #     x = x*1.5
-            # if f2:
-            #     y = y/1.5
-            # else:
-            #     y = y*1.5
-
+                    f1 = s_f1
+                    f2 = s_f2
+            if f1:
+                x = x/1.5
+            else:
+                x = x*1.5
+            if f2:
+                y = y/1.5
+            else:
+                y = y*1.5
+        if iteration % 10 == 0:
+            f_solution = inRoute(best_solution,pkn)
+            f_solution_cost = cost(x,y,f_solution,inf,pkn,C)
         iteration += 1
     print('best cost', best_solution_cost)
     return best_solution
@@ -337,7 +342,7 @@ def compare(a, b):
     k = 0
     n = 0
     f1 = False
-    f2 = True
+    f2 = False
     for i in range(len(a)):
         if len(b[i]) < len(a[i]):
             k = i
@@ -361,7 +366,7 @@ if __name__ == "__main__":
     print(stop-start)
 
     # test compare
-    # print(compare([[0, 2, 7, 11], [0, 1,4,9, 6,11]],[[0,2,7,4,9,11],[0,1,6,11]]))
+    # print(compare([[0, 1, 11, 3, 13, 5, 15, 6, 16, 10, 20, 21], [0, 2, 12, 4, 14, 7, 17, 21], [0, 8, 18, 9, 19, 21]],[[0, 3, 13, 5, 15, 6, 16, 10, 20, 21], [0, 1, 11, 2, 12, 4, 14, 7, 17, 21], [0, 8, 18, 9, 19, 21]]))
 
 
 
@@ -386,7 +391,7 @@ if __name__ == "__main__":
     # test cost
     # inf = [[0, 448, 621, 534, 15, 255, 179, 475, 278, 30, 10, 912, 825, 727, 170, 357, 652, 567, 384, 99, 65, 0], [1236, 505, 702, 605, 67, 324, 254, 528, 345, 92, 73, 967, 870, 782, 225, 410, 721, 620, 429, 148, 144, 1236], [0, 10, 20, 10, 10, 20, 20, 40, 10, 30, 10, -10, -20, -10, -10, -20, -20, -40, -10, -30, -10, 0], [0, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 0], [(40, 50), (35, 69), (40, 69), (38, 70), (42, 65), (38, 68), (15, 75), (20, 85), (15, 80), (22, 75), (30, 50), (45, 68), (45, 70), (42, 68), (40, 66), (35, 66), (25, 85), (22, 85), (20, 80), (18, 75), (25, 50), (40, 50)]]
     # # solution = [[0, 21], [0, 2, 9, 12, 19, 3, 13, 4, 14, 6, 16, 7, 17, 8, 18, 10, 20, 21], [0, 1, 11, 5, 15, 21]]
-    # solution = [[0, 1, 2, 12, 3, 11, 13, 21], [0, 4, 14, 5, 15, 6, 16, 7, 17, 10, 20, 21], [0, 8, 18, 9, 19, 21]]
+    # solution = [[0, 3, 1, 13, 11, 5, 15, 6, 16, 8, 18, 21], [0, 4, 14, 7, 17, 21], [0, 2, 12, 9, 19, 10, 20, 21]]
     # pkn = 10
     # C = 20
     # print(cost(1,1,solution,inf,pkn,C))
